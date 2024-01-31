@@ -3,6 +3,8 @@ import time
 from openai import OpenAI
 import openai
 import streamlit as st
+from openai.types.beta import Assistant
+from openai.types.beta.thread import Thread
 from openai.types.beta.threads.thread_message import ThreadMessage
 
 st.set_page_config(
@@ -37,21 +39,22 @@ def display_message(role, content):
 
 def main():
     if 'client' not in st.session_state:
-        st.session_state.client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        st.session_state.client = openai.OpenAI() 
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        st.session_state.client = openai.OpenAI()
+        
     # Upload a file with an "assistants" purpose
-        st.session_state.file = st.session_state.client.files.create(
+        st.session_state.file = client.files.create(
         file=open("My-Info.pdf", "rb"),
         purpose='assistants'
         )
-        if 'assistant' not in st.session_state:
-            st.session_state.assistant = st.session_state.client.beta.assistants.create(
-            name="Customer Service Assistant",
-            instructions="you are assisent who have all detail about me and my professional life as well as everything.User can Ask anything gernel knowledge questions or any kind of questions.",
-            model="gpt-3.5-turbo-1106",
-            tools=[{"type": "retrieval"}],
-            file_ids=[st.session_state.file.id]
+        st.session_state.assistant = st.session_state.client.beta.assistants.create(
+        name="Customer Service Assistant",
+        instructions="you are my personal assisent who have all detail about me now you can help others with any query regarding me!",
+        model="gpt-3.5-turbo-1106",
+        tools=[{"type": "retrieval"}],
+        file_ids=[st.session_state.file.id]
         )
+
         st.session_state.thread  = st.session_state.client.beta.threads.create()
 
     user_query = st.text_input("Enter your query:", key="user_query")
@@ -66,7 +69,7 @@ def main():
         run= st.session_state.client.beta.threads.runs.create(
         thread_id=st.session_state.thread.id,
         assistant_id=st.session_state.assistant.id,
-        instructions="Please address the user as my future client. The user has asked you a question. You should respond to the user in a professional manner. user can Ask anything gernel knowledge questions or any kind of questions." )
+        instructions="Please address the user as my future client. The user has asked you a question. You should respond to the user in a professional manner." )
        
         while True:
             # Wait for 5 seconds
