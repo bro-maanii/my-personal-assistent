@@ -6,6 +6,25 @@ import streamlit as st
 from openai.types.beta import Assistant
 from openai.types.beta.thread import Thread
 from openai.types.beta.threads.thread_message import ThreadMessage
+import os
+import json
+
+def save_session_state():
+    session_state = {
+        "assistant_id": st.session_state.assistant.id,
+        "thread_id": st.session_state.thread.id,
+    }
+
+    with open("session_state.json", "w") as file:
+        json.dump(session_state, file)
+
+def load_session_state():
+    if os.path.exists("session_state.json"):
+        with open("session_state.json", "r") as file:
+            session_state = json.load(file)
+
+        st.session_state.assistant_id = session_state.get("assistant_id")
+        st.session_state.thread_id = session_state.get("thread_id")
 
 st.set_page_config(
    page_title="Cool ChatBot App",
@@ -17,6 +36,7 @@ st.title("MY ASSISENT BOT🤖")
 st.info("Welcome to MyChatBot! This chat bot is designed to help you with any questions or concerns regarding my professional life. Feel free to ask questions or engage in conversation. Please note that this is a demo version, and the bot's responses are generated based on your input.")
 
 def clear_chat():
+    
     with st.spinner(text="Clearing chat..."):
         if 'thread' not in st.session_state:
             st.session_state.thread = st.session_state.client.beta.threads.create()
@@ -38,9 +58,10 @@ def display_message(role, content):
     
 
 def main():
+    load_session_state()
     if 'client' not in st.session_state:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        st.session_state.client = openai.OpenAI()
+        st.session_state.client = client
         
     # Upload a file with an "assistants" purpose
         st.session_state.file = client.files.create(
@@ -54,8 +75,9 @@ def main():
         tools=[{"type": "retrieval"}],
         file_ids=[st.session_state.file.id]
         )
+        if 'thread' not in st.session_state:
+            st.session_state.thread = st.session_state.client.beta.threads.create()
 
-        st.session_state.thread  = st.session_state.client.beta.threads.create()
 
     user_query = st.text_input("Enter your query:", key="user_query")
     
@@ -93,6 +115,7 @@ def main():
                     role = msg.role
                     content = msg.content[0].text.value
                     display_message(role, content)
+                save_session_state()
                 break
             else:
                 with st.spinner(text="Waiting for the Assistant to process..."):
